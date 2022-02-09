@@ -3,13 +3,55 @@
  */
 package io.devmode
 
-class App {
-    val greeting: String
-        get() {
-            return "Hello World!"
-        }
-}
+import io.devmode.Tables.PRODUCT
+import org.jooq.SQLDialect
+import org.jooq.conf.Settings
+import org.jooq.impl.DataSourceConnectionProvider
+import org.jooq.impl.DefaultConfiguration
+import org.jooq.impl.DefaultDSLContext
+import org.postgresql.ds.PGSimpleDataSource
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+
+const val dbUrl = "jdbc:postgresql://localhost:5432/devmode"
+const val dbUsername = "devmode"
+const val dbPassword = ""
 
 fun main() {
-    println(App().greeting)
+    val dslContext = DefaultDSLContext(configuration())
+
+    // Insert a record
+    dslContext
+        .insertInto(PRODUCT)
+        .columns(PRODUCT.NAME)
+        .values("Sour Grapes")
+        .execute()
+
+    // Fetch records
+    val productRecords = dslContext
+        .selectFrom(PRODUCT)
+        .fetch()
+
+    for(product in productRecords) {
+        println(product.name)
+    }
+}
+
+fun connectionProvider(): DataSourceConnectionProvider {
+    val dataSource = PGSimpleDataSource()
+    dataSource.setURL(dbUrl)
+    dataSource.user = dbUsername
+    dataSource.password = dbPassword
+    return DataSourceConnectionProvider(dataSource)
+}
+
+private fun configuration(): DefaultConfiguration {
+    val settings = Settings().withQueryTimeout(2)
+    val executorService: ExecutorService = Executors.newFixedThreadPool(10)
+    val jooqConfiguration = DefaultConfiguration()
+    jooqConfiguration.set(connectionProvider())
+    jooqConfiguration.setSQLDialect(SQLDialect.POSTGRES)
+    jooqConfiguration.setExecutor(executorService)
+    jooqConfiguration.setSettings(settings)
+    return jooqConfiguration
 }

@@ -13,11 +13,17 @@ plugins {
 
     // Apply the application plugin to add support for building a CLI application in Java.
     application
+    id("org.flywaydb.flyway") version "8.4.3"
+    id("nu.studer.jooq") version "6.0.1"
 }
 
 repositories {
     // Use Maven Central for resolving dependencies.
     mavenCentral()
+}
+
+flyway {
+    locations = arrayOf("filesystem:./migrations")
 }
 
 dependencies {
@@ -29,6 +35,8 @@ dependencies {
 
     // This dependency is used by the application.
     implementation("com.google.guava:guava:30.1.1-jre")
+    implementation("org.postgresql:postgresql:42.3.1")
+    jooqGenerator("org.postgresql:postgresql:42.3.1")
 }
 
 testing {
@@ -44,4 +52,51 @@ testing {
 application {
     // Define the main class for the application.
     mainClass.set("io.devmode.AppKt")
+}
+
+jooq {
+    configurations {
+        create("main") {
+            val dbHost: String = "localhost"
+            val dbUsername: String = "devmode"
+            val dbPassword = ""
+
+            generateSchemaSourceOnCompilation.set(false)
+
+            jooqConfiguration.apply {
+                jdbc.apply {
+                    driver = "org.postgresql.Driver"
+                    url = "jdbc:postgresql://$dbHost:5432/devmode"
+                    user = dbUsername
+                    password = dbPassword
+                }
+                generator.apply {
+                    name = "org.jooq.codegen.DefaultGenerator"
+                    database.apply {
+                        name = "org.jooq.meta.postgres.PostgresDatabase"
+                        inputSchema = "public"
+
+                        excludes = "flyway.*"
+                        isIncludeSequences = false
+                        isIncludePrimaryKeys = false
+                        isIncludeUniqueKeys = false
+                        isIncludeForeignKeys = false
+                        isIncludeCheckConstraints = false
+                        isIncludeIndexes = false
+                    }
+
+                    generate.apply {
+                        isRecords = true
+                        isPojos = false
+                        isFluentSetters = true
+                    }
+                    target.apply {
+                        packageName = "io.devmode"
+                        directory = "src/main/generated/"
+                    }
+                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                }
+            }
+        }
+    }
 }

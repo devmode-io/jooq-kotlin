@@ -1,1 +1,1 @@
-# jooq-kotlin
+# jOOQ and Kotlin
